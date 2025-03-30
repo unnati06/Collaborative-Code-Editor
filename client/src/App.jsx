@@ -1,7 +1,7 @@
 import CodeEditor from "./components/Editor"
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import Editorpage from "./pages/Editorpage";
+import Editorpage from "./pages/EditorPage";
 import Editor from './components/Editor';
 
 function App() {
