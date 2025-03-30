@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSocket } from '../context/SocketContext';
-import { useParams, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import Editor from '../components/Editor';
 import Clients from '../components/Clients';
@@ -11,7 +11,8 @@ const EditorPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
-    const [code, setCode] = useState(''); // Replace codeRef with state
+    const [code, setCode] = useState('');
+    const [output, setOutput] = useState(''); // Store execution output/errors
 
     useEffect(() => {
         if (connectionStatus === 'error') {
@@ -24,59 +25,65 @@ const EditorPage = () => {
         if (!socket || !isConnected) return;
 
         const handleJoined = ({ clients, username, socketId }) => {
+            console.log("Clients received:", clients); // Debug here
             const currentUser = location.state?.username || 'Guest';
-            if (username !== currentUser) {
-                toast.success(`${username} joined`);
-            }
+            if (username !== currentUser) toast.success(`${username} joined`);
             setClients(clients);
-            if (currentUser === clients[0]?.username) { // Host syncs
+            if (currentUser === clients[0]?.username) {
                 socket.emit('code-sync', { socketId, code });
             }
         };
 
-        const handleCodeSync = ({ code }) => {
-            setCode(code); // Update code state
-        };
-
-        const handleCodeUpdate = ({ code }) => {
-            setCode(code); // Update code state
-        };
-
-        const handleUserLeft = ({ username }) => {
+        socket.on('code-sync', ({ code }) => setCode(code));
+        socket.on('code-update', ({ code }) => setCode(code));
+        socket.on('joined', handleJoined);
+        socket.on('user-left', ({ username }) => {
             toast.success(`${username} left`);
             setClients(prev => prev.filter(c => c.username !== username));
-        };
-
-        socket.emit('join-room', {
-            roomId,
-            username: location.state?.username || 'Guest'
         });
 
-        socket.on('joined', handleJoined);
-        socket.on('code-sync', handleCodeSync);
-        socket.on('code-update', handleCodeUpdate);
-        socket.on('user-left', handleUserLeft);
+        socket.emit('join-room', { roomId, username: location.state?.username || 'Guest' });
 
         return () => {
-            socket.off('joined', handleJoined);
-            socket.off('code-sync', handleCodeSync);
-            socket.off('code-update', handleCodeUpdate);
-            socket.off('user-left', handleUserLeft);
+            socket.off('joined');
+            socket.off('code-sync');
+            socket.off('code-update');
+            socket.off('user-left');
             socket.emit('leave-room', { roomId });
         };
     }, [socket, isConnected, roomId, location.state]);
 
-    if (!isConnected) {
-        return <div className="loading">Connecting to collaborative session...</div>;
-    }
+    // Function to run the code
+    const runCode = () => {
+        setOutput(''); // Clear previous output
+        try {
+            // Redirect console.log to capture output
+            const logs = [];
+            const originalConsoleLog = console.log;
+            console.log = (...args) => logs.push(args.join(' '));
+
+            // Execute the code in a safe sandbox
+            const result = new Function(code)();
+            console.log = originalConsoleLog; // Restore console.log
+
+            // Display output
+            const outputText = logs.length > 0 ? logs.join('\n') : 
+                             result !== undefined ? String(result) : 'No output';
+            setOutput(outputText);
+        } catch (error) {
+            setOutput(`Error: ${error.message}`); // Display errors for debugging
+        }
+    };
+
+    if (!isConnected) return <div className="loading">Connecting...</div>;
 
     return (
         <div className="editor-page flex bg-pink-950 w-full h-screen">
             <div className="flex flex-row w-full h-screen bg-[#282C34]">
                 <aside className="sidebar flex flex-col w-56 h-screen bg-gray-800">
                     <div className="header flex flex-col mt-10">
-                        <h2 className='font-sans text-3xl mb-4'>Code Collab</h2>
-                        <p className='font-sans text-lg mb-4'>Room ID: {roomId}</p>
+                        <h2 className="font-sans text-3xl mb-4">Code Collab</h2>
+                        <p className="font-sans text-lg mb-4">Room ID: {roomId}</p>
                     </div>
                     <Clients clients={clients} />
                     <div className="flex flex-col h-full">
@@ -90,15 +97,25 @@ const EditorPage = () => {
                         </div>
                     </div>
                 </aside>
-                <main className="editor-container">
-                    <Editor
-                        roomId={roomId}
-                        onCodeChange={(newCode) => {
-                            setCode(newCode);
-                            socket.emit('code-change', { roomId, code: newCode });
-                        }}
-                        initialCode={code}
-                    />
+                <main className="flex flex-col flex-1">
+                    <div className="editor-container flex-1">
+                        <Editor
+                            roomId={roomId}
+                            onCodeChange={(newCode) => {
+                                setCode(newCode);
+                                socket.emit('code-change', { roomId, code: newCode });
+                            }}
+                            initialCode={code}
+                        />
+                    </div>
+                    <div className="controls flex justify-end p-2 bg-gray-900">
+                        <button onClick={runCode} className="run-btn h-10 px-4 bg-green-600 text-white">
+                            Run Code
+                        </button>
+                    </div>
+                    <div className="output-container p-2 bg-gray-800 text-white h-1/4 overflow-auto">
+                        <pre>{output || 'Output will appear here...'}</pre>
+                    </div>
                 </main>
             </div>
         </div>
