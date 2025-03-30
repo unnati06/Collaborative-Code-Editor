@@ -7,6 +7,7 @@ const Home = () => {
   const [roomId,  setRoomId] = useState('');
   const [username, setUsername] = useState('');
   const createNewRoom = (e) => {
+    e.preventDefault();
     const id = uuidV4();
     setRoomId(id);
     console.log(id);
@@ -34,10 +35,10 @@ const handleInputEnter = (e) => {
   // createNewRoom();
   return (
     <div className='flex bg-black flex-col w-full h-screen align-center items-center justify-center'>
-      <div className="bg-blue-900 flex flex-col w-3/6 h-56 justify-center items-center">
+      <div className="bg-gray-900 flex flex-col w-3/6 h-56 justify-center items-center">
          <div className="flex flex-col justify-center items-center">
-            <input type="text" className='gap-5px mb-4 h-10 text-black' placeholder='Room ID' onChange={(e) => setRoomId(e.target.value)} value={roomId}/>
-            <input type="text" className='gap-5px mb-4 h-10 text-black' placeholder='UserName' onChange={(e) => setUsername(e.target.value)} value={username}/>
+            <input type="text" className='gap-5px mb-4 h-10 bg-gray-700 rounded-lg text-black' placeholder='Room ID' onChange={(e) => setRoomId(e.target.value)} value={roomId}/>
+            <input type="text" className='gap-5px mb-4 h-10 bg-gray-700 rounded-lg text-black' placeholder='UserName' onChange={(e) => setUsername(e.target.value)} value={username}/>
             <button className='bg-green-400 rounded-xl w-20 h-9' onClick={joinRoom}>Join</button>
 
             <span className="createInfo">

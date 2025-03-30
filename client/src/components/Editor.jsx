@@ -8,15 +8,14 @@ import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightSty
 import { closeBrackets } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 
-
-const CodeEditor = () => {
+const Editor = ({ roomId, onCodeChange, initialCode }) => {
   const editorRef = useRef(null);
-  let viewRef = useRef(null);
+  const viewRef = useRef(null);
 
   useEffect(() => {
     if (editorRef.current) {
       const state = EditorState.create({
-        doc: 'console.log("Hello, CodeMirror 6!");',
+        doc: initialCode || '// Start coding here...',
         extensions: [
           lineNumbers(),
           highlightActiveLine(),
@@ -28,6 +27,12 @@ const CodeEditor = () => {
           oneDark,
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              const newCode = update.state.doc.toString();
+              onCodeChange(newCode); // Notify parent of changes
+            }
+          }),
         ],
       });
 
@@ -42,9 +47,18 @@ const CodeEditor = () => {
         view.destroy();
       };
     }
-  }, []);
+  }, []); // Empty dependency array to mount only once
 
-  return <div ref={editorRef} style={{ border: 'none', minHeight: '300px' }} />;
+  // Update editor when initialCode changes (e.g., from socket)
+  useEffect(() => {
+    if (viewRef.current && initialCode !== viewRef.current.state.doc.toString()) {
+      viewRef.current.dispatch({
+        changes: { from: 0, to: viewRef.current.state.doc.length, insert: initialCode },
+      });
+    }
+  }, [initialCode]);
+
+  return <div ref={editorRef} className="h-full" style={{ border: 'none' }} />;
 };
 
-export default CodeEditor;
+export default Editor;

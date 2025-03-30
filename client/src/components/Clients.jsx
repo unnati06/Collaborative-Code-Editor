@@ -1,13 +1,18 @@
 import React from 'react';
-import Avatar, { genConfig } from 'react-nice-avatar'
+import Avatar, { genConfig } from 'react-nice-avatar';
 
-const Clients = ({ username }) => {
-    const config = genConfig() 
+const Clients = ({ clients }) => {
     return (
-        <div className="client">
-           <Avatar className="w-16 h-16 ml-3" {...config} />
-            {/* <img src="" alt="user" /> */}
-            <span className="userName">{username}</span>
+        <div className="clients-list">
+            {clients.map((client) => {
+                const config = genConfig(); // Unique avatar config for each client
+                return (
+                    <div key={client.socketId} className="client flex items-center mb-2">
+                        <Avatar className="w-12 h-12 ml-3" {...config} />
+                        <span className="username ml-3 text-white">{client.username}</span>
+                    </div>
+                );
+            })}
         </div>
     );
 };
