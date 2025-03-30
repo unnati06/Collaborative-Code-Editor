@@ -9,7 +9,7 @@ const server = http.createServer(app);
 
 // CORS Configuration
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
   methods: ["GET", "POST"]
 }));
 
@@ -21,9 +21,9 @@ const io = new Server(server, {
 });
 
 // Static files and SPA fallback
-app.use(express.static('build'));
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+app.use(express.static(path.join(__dirname, 'dist'))); // Change 'build' to 'dist' if using Vite
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 const userSocketMap = new Map();
