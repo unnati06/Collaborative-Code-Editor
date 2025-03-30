@@ -21,10 +21,10 @@ const io = new Server(server, {
 });
 
 // Static files and SPA fallback
-app.use(express.static(path.join(__dirname, 'dist'))); // Change 'build' to 'dist' if using Vite
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// app.use(express.static(path.join(__dirname, 'dist'))); // Change 'build' to 'dist' if using Vite
+// app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
 
 const userSocketMap = new Map();
 const roomCodeMap = new Map();
