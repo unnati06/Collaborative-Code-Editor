@@ -9,7 +9,7 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io('https://collaborative-code-editor-2jnc.onrender.com');
 
     newSocket.on('connect', () => {
       setIsConnected(true);
