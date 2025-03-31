@@ -1,4 +1,4 @@
-require('dotenv').config(); // For local development
+require('dotenv').config(); // For local development with .env file
 
 const express = require('express');
 const app = express();
@@ -26,6 +26,11 @@ const io = new Server(server, {
   }
 });
 
+// Root route to handle GET requests to "/"
+app.get('/', (req, res) => {
+  res.send('Collaborative Code Editor Server is running!');
+});
+
 // Static files and SPA fallback (uncomment if needed)
 // app.use(express.static(path.join(__dirname, 'dist')));
 // app.get('*', (req, res) => {
@@ -51,19 +56,23 @@ const notifyRoom = (roomId, event, data) => {
 io.on('connection', (socket) => {
   console.log('Socket connected:', socket.id);
 
+  // Join Room Handler
   socket.on('join-room', ({ roomId, username }) => {
     try {
       userSocketMap.set(socket.id, username);
       socket.join(roomId);
 
+      // Initialize room code if empty
       if (!roomCodeMap.has(roomId)) {
         roomCodeMap.set(roomId, '// Start coding here...');
       }
 
+      // Send existing code to new user
       socket.emit('code-sync', {
         code: roomCodeMap.get(roomId)
       });
 
+      // Notify all clients in room
       notifyRoom(roomId, 'user-joined', {
         clients: getAllClientsInRoom(roomId),
         newUser: username
@@ -74,6 +83,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Code Change Handler
   socket.on('code-change', ({ roomId, code }) => {
     try {
       roomCodeMap.set(roomId, code);
@@ -83,6 +93,7 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Disconnection Handler
   socket.on('disconnecting', () => {
     const rooms = Array.from(socket.rooms);
     rooms.forEach(roomId => {
@@ -94,6 +105,7 @@ io.on('connection', (socket) => {
     userSocketMap.delete(socket.id);
   });
 
+  // Error Handling
   socket.on('error', (error) => {
     console.error('Socket error:', error);
   });
