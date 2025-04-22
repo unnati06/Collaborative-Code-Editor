@@ -7,7 +7,8 @@ Welcome to the **Collaborative Code Editor**, a real-time, multiplayer coding en
 
 🚀 **Live Demo**: [Insert your demo link here]  
 🎥 **Loom Walkthrough**:
-📸 **Screenshots**: [See the action in the screenshots section](#screenshots)
+📸 **Screenshots**: ![Editor Page](screenshots/ss_1.png)
+![Room id page](screenshots/ss_2.png)
 
 ---
 
