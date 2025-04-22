@@ -5,10 +5,11 @@
 Welcome to the **Collaborative Code Editor**, a real-time, multiplayer coding environment where developers can join a room using a unique Room ID and code together seamlessly. Think Google Docs, but for developers—see changes live, collaborate instantly, and build projects together!
 
 
-🚀 **Live Demo**: [Insert your demo link here]  
-🎥 **Loom Walkthrough**:
-📸 **Screenshots**: ![Editor Page](screenshots/ss_1.png)
-![Room id page](screenshots/ss_2.png)
+🚀 **Live Demo**: [(https://collaborative-code-editor-black.vercel.app/)]  
+
+📸 **Screenshots**: ![Room id page](screenshots/ss_2.png)
+![Editor Page](screenshots/ss_1.png)
+
 
 ---
 
