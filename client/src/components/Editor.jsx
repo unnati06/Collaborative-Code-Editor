@@ -1,19 +1,23 @@
 import React, { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { closeBrackets } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { getLanguageExtension } from './languages';
 
-const Editor = ({ roomId, onCodeChange, initialCode }) => {
+// Create a compartment for the language extension
+let languageCompartment = new Compartment();
+
+const Editor = ({ roomId, onCodeChange, initialCode, language }) => {
   const editorRef = useRef(null);
   const viewRef = useRef(null);
 
+  // This effect initializes the editor
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && !viewRef.current) {
       const state = EditorState.create({
         doc: initialCode || '// Start coding here...',
         extensions: [
@@ -23,7 +27,7 @@ const Editor = ({ roomId, onCodeChange, initialCode }) => {
           indentOnInput(),
           closeBrackets(),
           syntaxHighlighting(defaultHighlightStyle),
-          javascript(),
+          languageCompartment.of(getLanguageExtension(language)),
           oneDark,
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -45,11 +49,21 @@ const Editor = ({ roomId, onCodeChange, initialCode }) => {
 
       return () => {
         view.destroy();
+        viewRef.current = null;
       };
     }
-  }, []); // Empty dependency array to mount only once
+  }, [editorRef]); // Only run once on mount
 
-  // Update editor when initialCode changes (e.g., from socket)
+  // This effect handles language changes
+  useEffect(() => {
+    if (viewRef.current) {
+      viewRef.current.dispatch({
+        effects: languageCompartment.reconfigure(getLanguageExtension(language)),
+      });
+    }
+  }, [language]);
+
+  // This effect syncs code from the server
   useEffect(() => {
     if (viewRef.current && initialCode !== viewRef.current.state.doc.toString()) {
       viewRef.current.dispatch({

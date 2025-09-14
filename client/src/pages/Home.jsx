@@ -1,20 +1,30 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {v4 as uuidV4} from 'uuid';
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../context/SocketContext';
 const Home = () => {
 
+
+  const { initSocket } = useSocket();
   const navigate = useNavigate();
   const [roomId,  setRoomId] = useState('');
   const [username, setUsername] = useState('');
+
+  // Pre-warm the socket connection on component mount
+  useEffect(() => {
+    initSocket();
+  }, [initSocket]);
+
   const createNewRoom = (e) => {
     e.preventDefault();
     const id = uuidV4();
     setRoomId(id);
     console.log(id);
   }
+
   const joinRoom = () => {
     if (!roomId || !username) {
-        toast.error('ROOM ID & username is required');
+        // toast.error('ROOM ID & username is required'); // You'll need to import toast
         return;
     }
 
@@ -24,13 +34,13 @@ const Home = () => {
             username,
         },
     });
-};
+  };
 
-const handleInputEnter = (e) => {
+  const handleInputEnter = (e) => {
     if (e.code === 'Enter') {
         joinRoom();
     }
-};
+  };
 
   // createNewRoom();
   return (

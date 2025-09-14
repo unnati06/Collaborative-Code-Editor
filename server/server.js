@@ -1,12 +1,15 @@
 require('dotenv').config(); // For local development with .env file
 
 const express = require('express');
+const axios = require('axios'); // + Add axios
 const app = express();
 const http = require('http');
 const path = require('path');
 const cors = require('cors');
 const { Server } = require('socket.io');
 
+
+app.use(express.json()); // + Add express json parser for the new route
 const server = http.createServer(app);
 
 // Log the CLIENT_URL for debugging
@@ -109,6 +112,62 @@ io.on('connection', (socket) => {
   socket.on('error', (error) => {
     console.error('Socket error:', error);
   });
+});
+
+
+// + ADD THIS NEW ROUTE BEFORE server.listen
+app.post('/execute', async (req, res) => {
+  const { language, code } = req.body;
+
+  // A map from our language names to Judge0's language IDs
+  const languageIdMap = {
+    javascript: 93, // Node.js
+    python: 71,     // Python 3.8
+    cpp: 54,        // C++ (GCC 9.2.0)
+    java: 91,       // Java (JDK 17)
+  };
+
+  const options = {
+    method: 'POST',
+    url: 'https://judge0-ce.p.rapidapi.com/submissions',
+    params: { base64_encoded: 'false', fields: '*' },
+    headers: {
+      'content-type': 'application/json',
+      'X-RapidAPI-Key': process.env.RAPIDAPI_KEY, // <-- IMPORTANT: Store this in .env!
+      'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+    },
+    data: {
+      language_id: languageIdMap[language],
+      source_code: code,
+      stdin: '' // Standard input, if any
+    }
+  };
+
+  try {
+    const submissionResponse = await axios.request(options);
+    const token = submissionResponse.data.token;
+
+    // Poll for the result
+    let resultResponse;
+    do {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 sec
+      resultResponse = await axios.request({
+        method: 'GET',
+        url: `https://judge0-ce.p.rapidapi.com/submissions/${token}`,
+        params: { base64_encoded: 'false', fields: '*' },
+        headers: {
+          'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+          'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
+        }
+      });
+    } while (resultResponse.data.status.id <= 2); // Status 1 & 2 mean "In Queue" or "Processing"
+
+    res.json(resultResponse.data);
+
+  } catch (error) {
+    console.error('Execution Error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to execute code.' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

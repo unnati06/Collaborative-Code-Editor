@@ -1,36 +1,44 @@
-// contexts/socketContext.js
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
 
+// Store socket instance outside of component to prevent re-creation
+let socketInstance = null;
+
 export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(socketInstance?.connected || false);
 
-  useEffect(() => {
-    const newSocket = io('https://collaborative-code-editor-2jnc.onrender.com');
+  const initSocket = useCallback(() => {
+    // Connect only if not already connected or connecting
+    if (socketInstance) return;
 
-    newSocket.on('connect', () => {
+    console.log('Initializing socket connection...');
+    socketInstance = io('https://collaborative-code-editor-2jnc.onrender.com');
+
+    socketInstance.on('connect', () => {
       setIsConnected(true);
-      console.log('Connected:', newSocket.id);
+      console.log('Connected:', socketInstance.id);
     });
 
-    newSocket.on('disconnect', () => {
+    socketInstance.on('disconnect', () => {
       setIsConnected(false);
       console.log('Disconnected');
     });
-
-    setSocket(newSocket);
-
+  }, []);
+  
+  // Clean up the connection when the provider unmounts
+  useEffect(() => {
     return () => {
-      newSocket.disconnect();
-      setSocket(null);
+      if (socketInstance) {
+        socketInstance.disconnect();
+        socketInstance = null;
+      }
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={{ socket: socketInstance, isConnected, initSocket }}>
       {children}
     </SocketContext.Provider>
   );
