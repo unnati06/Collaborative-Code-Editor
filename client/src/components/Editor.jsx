@@ -5,16 +5,20 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { getLanguageExtension } from './languages'; // Your language helper
 
-// Key Fix: These must be outside the component to persist across re-renders.
 const languageCompartment = new Compartment();
 
 const Editor = ({ language, onCodeChange, initialCode }) => {
     const editorRef = useRef(null);
-    const viewRef = useRef(null); // Ref to hold the EditorView instance
+    const viewRef = useRef(null);
+    
+    // Good Practice: Use a ref for the callback to avoid stale closures
+    const onCodeChangeRef = useRef(onCodeChange);
+    useEffect(() => {
+        onCodeChangeRef.current = onCodeChange;
+    }, [onCodeChange]);
 
     // This effect initializes the editor ONCE
     useEffect(() => {
-        // Key Fix: Check if the view is already initialized to prevent re-creation
         if (editorRef.current && !viewRef.current) {
             const startState = EditorState.create({
                 doc: initialCode || '',
@@ -25,7 +29,8 @@ const Editor = ({ language, onCodeChange, initialCode }) => {
                     languageCompartment.of(getLanguageExtension(language)),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            onCodeChange(update.state.doc.toString());
+                            // Call the latest version of the callback from the ref
+                            onCodeChangeRef.current(update.state.doc.toString());
                         }
                     }),
                 ],
@@ -36,11 +41,9 @@ const Editor = ({ language, onCodeChange, initialCode }) => {
                 parent: editorRef.current,
             });
             
-            // Key Fix: Store the created view instance in our ref
             viewRef.current = view;
         }
 
-        // Cleanup function to destroy the view when the component unmounts
         return () => {
             if (viewRef.current) {
                 viewRef.current.destroy();
@@ -49,16 +52,23 @@ const Editor = ({ language, onCodeChange, initialCode }) => {
         };
     }, []); // Empty dependency array ensures this runs only ONCE
 
-    // This effect syncs incoming code changes from the server
+    // This effect syncs incoming code changes from props (e.g., from a server)
     useEffect(() => {
-        if (viewRef.current && initialCode !== viewRef.current.state.doc.toString()) {
-            viewRef.current.dispatch({
+        const view = viewRef.current;
+        if (view && initialCode !== view.state.doc.toString()) {
+            // FIX: Use state.update to create a transaction that preserves the cursor position
+            const transaction = view.state.update({
                 changes: {
                     from: 0,
-                    to: viewRef.current.state.doc.length,
-                    insert: initialCode,
+                    to: view.state.doc.length,
+                    insert: initialCode || '',
                 },
+                // This is the key part that prevents the cursor from jumping
+                selection: view.state.selection, 
+                // Optionally, ensure the cursor stays in view
+                scrollIntoView: true,
             });
+            view.dispatch(transaction);
         }
     }, [initialCode]);
 
@@ -73,5 +83,5 @@ const Editor = ({ language, onCodeChange, initialCode }) => {
 
     return <div ref={editorRef} className="h-full w-full" />;
 };
-
+//finish
 export default Editor;
