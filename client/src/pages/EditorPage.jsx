@@ -46,31 +46,28 @@ const EditorPage = () => {
     useEffect(() => {
         if (!socket || !isConnected) return;
 
-        // + Listen for language updates from others
+        // Listen for language updates from others
         const handleLanguageUpdate = ({ language: newLanguage }) => {
             setLanguage(newLanguage);
         };
 
-        // + When we get the initial code, also get the language
+        // When we get the initial code, also get the language
         const handleCodeSync = ({ code: initialCode, language: initialLanguage }) => {
             setCode(initialCode || '');
             setLanguage(initialLanguage || 'javascript');
         };
 
-        const handleJoined = ({ clients, username, socketId }) => {
-            console.log("Clients received:", clients); // Debug here
+        // Updated to match new server event signature
+        const handleJoined = ({ clients, newUser }) => {
             const currentUser = location.state?.username || 'Guest';
-            if (username !== currentUser) toast.success(`${username} joined`);
+            if (newUser !== currentUser) toast.success(`${newUser} joined`);
             setClients(clients);
-            if (currentUser === clients[0]?.username) {
-                socket.emit('code-sync', { socketId, code, language });
-            }
         };
 
         socket.on('language-update', handleLanguageUpdate);
         socket.on('code-sync', handleCodeSync);
         socket.on('code-update', ({ code }) => setCode(code));
-        socket.on('joined', handleJoined);
+        socket.on('user-joined', handleJoined);
         socket.on('user-left', ({ username }) => {
             toast.success(`${username} left`);
             setClients(prev => prev.filter(c => c.username !== username));
@@ -82,11 +79,11 @@ const EditorPage = () => {
             socket.off('language-update', handleLanguageUpdate);
             socket.off('code-sync', handleCodeSync);
             socket.off('code-update');
-            socket.off('joined');
+            socket.off('user-joined');
             socket.off('user-left');
             socket.emit('leave-room', { roomId });
         };
-    }, [socket, isConnected, roomId, location.state, code, language]);
+    }, [socket, isConnected, roomId, location.state, navigate]);
 
 
     // + Handler to change language and notify others

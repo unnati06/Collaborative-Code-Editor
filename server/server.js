@@ -42,6 +42,7 @@ app.get('/', (req, res) => {
 
 const userSocketMap = new Map();
 const roomCodeMap = new Map();
+const roomLanguageMap = new Map(); // + ADD THIS LINE
 
 // Helper functions
 const getAllClientsInRoom = (roomId) => {
@@ -55,63 +56,77 @@ const notifyRoom = (roomId, event, data) => {
   io.to(roomId).emit(event, data);
 };
 
+
 // Socket.IO Logic
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
+    console.log('Socket connected:', socket.id);
 
-  // Join Room Handler
-  socket.on('join-room', ({ roomId, username }) => {
-    try {
-      userSocketMap.set(socket.id, username);
-      socket.join(roomId);
+    // Join Room Handler
+    socket.on('join-room', ({ roomId, username }) => {
+        try {
+            userSocketMap.set(socket.id, username);
+            socket.join(roomId);
 
-      // Initialize room code if empty
-      if (!roomCodeMap.has(roomId)) {
-        roomCodeMap.set(roomId, '// Start coding here...');
-      }
+            // Initialize room code and language if empty
+            if (!roomCodeMap.has(roomId)) {
+                roomCodeMap.set(roomId, '// Start coding here...');
+                roomLanguageMap.set(roomId, 'javascript'); // Default to JS
+            }
 
-      // Send existing code to new user
-      socket.emit('code-sync', {
-        code: roomCodeMap.get(roomId)
-      });
+            // Send existing code AND language to new user
+            socket.emit('code-sync', {
+                code: roomCodeMap.get(roomId),
+                language: roomLanguageMap.get(roomId) // + ADD THIS
+            });
 
-      // Notify all clients in room
-      notifyRoom(roomId, 'user-joined', {
-        clients: getAllClientsInRoom(roomId),
-        newUser: username
-      });
-    } catch (error) {
-      console.error('Join error:', error);
-      socket.emit('error', { message: 'Failed to join room' });
-    }
-  });
-
-  // Code Change Handler
-  socket.on('code-change', ({ roomId, code }) => {
-    try {
-      roomCodeMap.set(roomId, code);
-      socket.to(roomId).emit('code-update', { code });
-    } catch (error) {
-      console.error('Code update error:', error);
-    }
-  });
-
-  // Disconnection Handler
-  socket.on('disconnecting', () => {
-    const rooms = Array.from(socket.rooms);
-    rooms.forEach(roomId => {
-      socket.to(roomId).emit('user-left', {
-        socketId: socket.id,
-        username: userSocketMap.get(socket.id)
-      });
+            // Notify all clients in room
+            notifyRoom(roomId, 'user-joined', {
+                clients: getAllClientsInRoom(roomId),
+                newUser: username
+            });
+        } catch (error) {
+            console.error('Join error:', error);
+            socket.emit('error', { message: 'Failed to join room' });
+        }
     });
-    userSocketMap.delete(socket.id);
-  });
 
-  // Error Handling
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
+    // Code Change Handler
+    socket.on('code-change', ({ roomId, code }) => {
+        try {
+            roomCodeMap.set(roomId, code);
+            socket.to(roomId).emit('code-update', { code });
+        } catch (error) {
+            console.error('Code update error:', error);
+        }
+    });
+
+    // + ADD THIS NEW HANDLER for language changes
+    socket.on('language-change', ({ roomId, language }) => {
+        try {
+            roomLanguageMap.set(roomId, language);
+            // Use socket.to() to broadcast to everyone else
+            socket.to(roomId).emit('language-update', { language });
+        } catch (error) {
+            console.error('Language update error:', error);
+        }
+    });
+
+    // Disconnection Handler (no changes needed here)
+    socket.on('disconnecting', () => {
+        const rooms = Array.from(socket.rooms);
+        rooms.forEach(roomId => {
+            socket.to(roomId).emit('user-left', {
+                socketId: socket.id,
+                username: userSocketMap.get(socket.id)
+            });
+        });
+        userSocketMap.delete(socket.id);
+    });
+
+    // Error Handling (no changes needed here)
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
 });
 
 
