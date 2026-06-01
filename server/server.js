@@ -21,6 +21,8 @@ app.use(cors({
   methods: ["GET", "POST"]
 }));
 
+app.use(express.static(path.join(__dirname, "public")));
+
 // CORS Configuration for Socket.IO
 const io = new Server(server, {
   cors: {
